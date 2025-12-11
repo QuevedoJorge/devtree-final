@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route} from 'react-router-dom'
 import LoginView from './views/LoginView'
 import RegisterView from './views/RegisterView'
 import AuthLayout from './layouts/AuthLayout'
@@ -8,6 +8,8 @@ import ProfileView from './views/ProfileView'
 import HandleView from './views/HandleView'
 import NotFoundView from './views/NotFoundView'
 import HomeView from './views/HomeView'
+import SearchResultsView from './views/SearchResultsView'
+import UserByIdView from './views/UserByIdView'
 
 export default function Router() {
 
@@ -22,6 +24,8 @@ export default function Router() {
                     <Route index={true} element={<LinkTreeView />} />
                     <Route path='profile' element={<ProfileView />} /> 
                 </Route>
+                <Route path='/u/:userId' element={<UserByIdView />} />
+                <Route path='/search' element={<SearchResultsView />} />
                 <Route path='/:handle' element={<AuthLayout />}>
                     <Route element={<HandleView />} index={true} />
                 </Route>

@@ -4,6 +4,9 @@ import slug from 'slug'
 import formidable from 'formidable'
 import { v4 as uuid } from 'uuid'
 import User from "../models/User"
+import Visit from '../models/Visit'
+import jwt from 'jsonwebtoken'
+
 import { checkPassword, hashPassword } from '../utils/auth'
 import { generateJWT } from '../utils/jwt'
 import cloudinary from '../config/cloudinary'
@@ -134,6 +137,106 @@ export const searchByHandle = async (req: Request, res: Response) => {
             return res.status(409).json({error: error.message})
         }
         res.send(`${handle} está disponible`)
+    } catch (e) {
+        const error = new Error('Hubo un error')
+        return res.status(500).json({ error: error.message })
+    }
+}
+
+export const getUserById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params
+        const user = await User.findById(id).select('-password -__v')
+        if (!user) {
+            const error = new Error('El Usuario no existe')
+            return res.status(404).json({ error: error.message })
+        }
+        res.json(user)
+    } catch (e) {
+        const error = new Error('Hubo un error')
+        return res.status(500).json({ error: error.message })
+    }
+}
+
+export const registerVisit = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params
+
+        const user = await User.findById(userId)
+        if (!user) {
+            const error = new Error('El Usuario no existe')
+            return res.status(404).json({ error: error.message })
+        }
+
+        let viewerName = 'Anónimo'
+        let viewerEmail = null
+
+        const bearer = req.headers.authorization
+        if (bearer) {
+            const [, token] = bearer.split(' ')
+            if (token) {
+                try {
+                    const result = jwt.verify(token, process.env.JWT_SECRET)
+                    if (typeof result === 'object' && result.id) {
+                        const visitor = await User.findById(result.id)
+                        if (visitor) {
+                            viewerName = visitor.name
+                            viewerEmail = visitor.email
+
+                            // Verificar si ya existe una visita de este usuario (viewerEmail) al perfil (userId)
+                            const existingVisit = await Visit.findOne({ visitedUserId: userId, viewerEmail })
+                            if (existingVisit) {
+                                return res.json({ msg: 'Visita ya registrada previamente' })
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+        }
+
+        user.visitas += 1
+        await user.save()
+
+        const visit = new Visit({
+            visitedUserId: userId,
+            viewerName,
+            viewerEmail
+        })
+        await visit.save()
+
+        res.json({ msg: 'Visita registrada' })
+    } catch (e) {
+        const error = new Error('Hubo un error')
+        return res.status(500).json({ error: error.message })
+    }
+}
+
+export const getVisits = async (req: Request, res: Response) => {
+    try {
+        const { userId } = req.params
+        const visits = await Visit.find({ visitedUserId: userId }).select('viewerName viewerEmail createdAt')
+        res.json(visits)
+    } catch (e) {
+        const error = new Error('Hubo un error')
+        return res.status(500).json({ error: error.message })
+    }
+}
+
+export const searchUsers = async (req: Request, res: Response) => {
+    try {
+        const { query } = req.query
+        if (!query) return res.json([])
+
+        const users = await User.find({
+            $or: [
+                { name: { $regex: query, $options: 'i' } },
+                { email: { $regex: query, $options: 'i' } }
+            ]
+        }).select('name email image')
+
+        res.json(users)
     } catch (e) {
         const error = new Error('Hubo un error')
         return res.status(500).json({ error: error.message })

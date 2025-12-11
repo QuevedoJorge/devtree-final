@@ -4,16 +4,23 @@ import { social } from "../data/social"
 import DevTreeInput from "../components/DevTreeInput"
 import { isValidUrl } from "../utils"
 import { toast } from "sonner"
-import { updateProfile } from "../api/DevTreeAPI"
-import { SocialNetwork, User } from "../types"
+import { updateProfile, getVisits } from "../api/DevTreeAPI"
+import { SocialNetwork, User, Visit } from "../types"
 
 export default function LinkTreeView() {
   const [devTreeLinks, setDevTreeLinks] = useState(social)
 
   const queryClient = useQueryClient()
   const user : User = queryClient.getQueryData(['user'])!
+  const [visits, setVisits] = useState<Visit[]>([])
 
-  const { mutate } = useMutation({
+  useEffect(() => {
+      if(user?._id) {
+          getVisits(user?._id).then(data => setVisits(data || []))
+      }
+  }, [user])
+
+  const { mutate} = useMutation({
     mutationFn: updateProfile,
     onError: (error) => {
       toast.error(error.message)
@@ -32,7 +39,7 @@ export default function LinkTreeView() {
       return item
     })
     setDevTreeLinks(updatedData)
-  }, [])
+  },[devTreeLinks, user.links])
 
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,10 +126,35 @@ export default function LinkTreeView() {
                 handleEnableLink={handleEnableLink}
               />
           ))}
+
           <button
             className="bg-cyan-400 p-2 text-lg w-full uppercase text-slate-600 rounded-lg font-bold"
             onClick={() => mutate(queryClient.getQueryData(['user'])!)}
           >Guardar Cambios</button>
+
+          <div className="mt-10 bg-white p-5 rounded shadow">
+              <h2 className="text-xl font-bold mb-4">Historial de Visitas</h2>
+              <p className="mb-2 font-bold">Total: {user.visitas || 0}</p>
+              <table className="w-full text-left border-collapse">
+                  <thead>
+                      <tr>
+                          <th className="border-b p-2">Nombre</th>
+                          <th className="border-b p-2">Email</th>
+                          <th className="border-b p-2">Fecha</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {visits.map((visita, i) => (
+                          <tr key={i}>
+                              <td className="border-b p-2">{visita.viewerName}</td>
+                              <td className="border-b p-2">{visita.viewerEmail || '-'}</td>
+                              <td className="border-b p-2">{new Date(visita.createdAt).toLocaleString()}</td>
+                          </tr>
+                      ))}
+                      {visits.length === 0 && <tr><td colSpan={3} className="p-2">No hay visitas recientes.</td></tr>}
+                  </tbody>
+              </table>
+          </div>
       </div>
     </>
   )

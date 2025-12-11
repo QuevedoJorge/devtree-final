@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body } from 'express-validator'
-import { createAccount, getUser, getUserByHandle, login, searchByHandle, updateProfile, uploadImage } from './handlers'
+import { createAccount, getUser, getUserByHandle, login, searchByHandle, updateProfile, uploadImage, getUserById, registerVisit, getVisits, searchUsers } from './handlers'
 import { handleInputErrors } from './middleware/validation'
 import { authenticate } from './middleware/auth'
 
@@ -48,6 +48,8 @@ router.patch('/user',
 
 router.post('/user/image', authenticate, uploadImage)
 
+router.get('/search', searchUsers)
+
 router.get('/:handle', getUserByHandle)
 
 router.post('/search',
@@ -57,5 +59,9 @@ router.post('/search',
     handleInputErrors,
     searchByHandle
 )
+
+router.get('/user/:id', getUserById)
+router.post('/visit/:userId', registerVisit)
+router.get('/visits/:userId', getVisits)
 
 export default router
